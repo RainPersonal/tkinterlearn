@@ -250,6 +250,10 @@ def show(flag):
 		func = get_input  #表示获取输入框的信息
 		title = '合金成分录入'
 		xsize = 1240
+		if len(Alloycont.get()) == 0:
+			top.quit()
+			top.destroy()
+			return
 	else:
 		top = tk.Toplevel()
 		func = showelelabel #表示回去显示元素信息框的标志
