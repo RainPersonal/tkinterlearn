@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import tkinter  as tk
+from tkinter import filedialog
 from tkinter import ttk
 import tkinter.messagebox as messagebox
 from elements import elements, get_class_by_index, ele_button
 import tkinter.font as tf
 import json
-import os, sys
+import os, sys, shutil
 
 file = None
 treeview = None
@@ -147,7 +148,7 @@ def creat_mec_pro():
 			# print(room_mech,room_exten)
 			tarview.insert('','end',text='室温性能',tags='Tension_property',values=('室温性能',float(room_mech),float(room_exten)))
 		if (high_mech := high_min.get()) != '' and (high_exten := high_max.get()) != '':
-			print(high_mech,high_exten)
+			# print(high_mech,high_exten)
 			tarview.insert('','end',text='高温性能',tags='Tension_property',values=('高温性能',float(high_mech),float(high_exten)))
 		Ten_Pro.destroy()
 	def quit_input():
@@ -184,26 +185,48 @@ def delete_item():
 def get_name(Alloycont,Alloyprop):
 	def submit(ev = None):
 		global file
-		filename = Alloy.get()
+		filename = Alloy_name.get()
 		if not os.path.exists('data'):
 			os.mkdir('data')
-		file = open(os.path.join('data',filename+'.txt'),"a+")
+		if not os.path.exists(filename+'.txt'):
+			mode = 'w+'
+		else:
+			mode = 'r+'
+		# print("filepath:",os.path.abspath(filepath)==os.path.abspath(os.path.join('data',filename+'.txt')))
+		if filepath != None and os.path.abspath(filepath) != os.path.abspath(os.path.join('data',filename+'.txt')):
+			# print("come in")
+			shutil.copyfile(filepath,os.path.join('data',filename+'.txt'))
+		file = open(os.path.join('data',filename+'.txt'),mode,encoding="utf-8")
+		# print(file)
 		Alloycont.set(filename+'合金成分')
 		Alloyprop.set(filename+'合金性能')
 		name_win.quit()
 		name_win.destroy()
+	def openfile():
+		path = filedialog.askopenfilename(initialdir=os.path.join('data'),filetypes=[("文本文档",".txt"),("所有文件","*")])
+		fpath,fname = os.path.split(path)
+		# print(type(fpath),"....",fname)
+		name_win.focus_set()
+		if fpath != '' and fname != '':
+			Alloy_name.set(fname.replace('.txt',''))
+			nonlocal filepath
+			filepath = path
 	if file != None:
 		dump2file()
+	filepath = None
 	ftinput_name = tf.Font(family='等线', size=15,weight=tf.BOLD,underline=0,overstrike=0)
-	# Alloy = tk.StringVar()
+	Alloy_name = tk.StringVar()
 	name_win = tk.Toplevel()
 	name_win.title('合金牌号录入')
 	center_window(name_win, max_width*0.2, max_height*0.1)
-	tk.Label(name_win,text='请输入合金牌号',font = ftinput_name).pack()
-	Alloy = tk.Entry(name_win)
+	name_frame=ttk.Frame(name_win,relief='flat')
+	tk.Label(name_frame,text='请输入新合金牌号',font = ftinput_name).grid(row=0,column=0,columnspan=2)
+	Alloy = tk.Entry(name_frame,textvariable=Alloy_name)
 	Alloy.focus_set()
-	Alloy.pack()
-	tk.Button(name_win, text = '确认', font = ftinput_name, command = submit).pack()
+	Alloy.grid(row=1,column=0,columnspan=2)
+	tk.Button(name_frame, text = '打开', font = ftinput_name, command = openfile).grid(row=2,column=0)
+	tk.Button(name_frame, text = '确认', font = ftinput_name, command = submit).grid(row=2,column=1)
+	name_frame.pack()
 	Alloy.bind("<Return>", submit)
 	# name_win.bind("<Escape>",lambda event:name_win.destroy())
 	# print("get_name6")
@@ -214,25 +237,32 @@ def dump2file():
 	# file.seek(0)
 	# file.truncate()
 	global file
+	file.seek(0)
+	file.truncate()
 	for i in treeview.get_children():
 		# print(type(treeview.item(i)))
 		file.write(json.dumps(treeview.item(i),ensure_ascii=False)+'\n')
+		treeview.delete(i)
 		file.flush()
 	for i in tarview.get_children():
 		file.write(json.dumps(tarview.item(i),ensure_ascii=False)+'\n')
+		tarview.delete(i)
 		file.flush()
 	file.close()
 	file = None
 
-def short_key(event,value,func):
+def short_key(event,value,func,Alloycont,Alloyprop):
 		# print("test comein",value.get())
-		if event.keycode == 13 and len(num:=value.get())>0:
-			ele_index = int(num)-1
-			value.set('')
-			if ele_index < len(elements) and ele_index>=0:
-				func(elements[ele_index])
-			if ele_index < 0 and tarview != None:
-				creat_mec_pro()
+		if event.keycode == 13:
+			if len(num:=value.get())>0:
+				ele_index = int(num)-1
+				value.set('')
+				if ele_index < len(elements) and ele_index>=0:
+					func(elements[ele_index])
+				if ele_index < 0 and tarview != None:
+					creat_mec_pro()
+			else:
+				get_name(Alloycont,Alloyprop)
 		elif event.char.isdecimal():
 			value.set(value.get()+event.char)
 		elif event.keycode == 27:
@@ -268,6 +298,7 @@ def show(flag):
 	tk.Label(top,relief = 'flat', width=5).grid(row=1,column=0,rowspan=2)
 	if flag:
 		# 设置表格位置 利用fram进行组装
+		# print("flag=True")
 		tvframe = ttk.Frame(top,relief='groove',width=50)
 		tk.Label(tvframe,relief='flat',textvariable=Alloycont,borderwidth=5,font=fttop).grid(row=0,column=0,columnspan=6)
 		global treeview, tarview
@@ -283,7 +314,6 @@ def show(flag):
 		treeview.heading("元素", text="元素") # 显示表头
 		treeview.heading("最小值", text="最小值")
 		treeview.heading("最大值", text="最大值")
-		# treeview.insert('','end',text='铝',values=('Al',0,1))
 		# treeview.insert('','end',text='铁',values=('Fe',0,1))
 		# treeview.bind('<Button-1>', selectItem)
 		treeview.grid(row=1, column=0, columnspan=6)
@@ -300,6 +330,15 @@ def show(flag):
 		# tarview.insert("",0,text="室温拉伸" ,values=("室温拉伸","1","2")) #插入数据，
 		# tarview.insert("",1,text="高温拉伸" ,values=("室温拉伸","1","2"))
 		tarview.grid(row=3, column=0, columnspan=6)
+		for line in file.readlines():
+			dic = json.loads(line)
+			# print(dic['text'],type(dic['text']))
+			if type(dic['tags'][0]) is int:
+				treeview.insert('','end',text=dic['text'],tags=dic['tags'],values=dic['values'])
+				# print(type(dic['tags'][0]),dic,dic['tags'][0]) 
+			if type(dic['tags'][0]) is str:
+				tarview.insert('','end',text=dic['text'],tags=dic['tags'],values=dic['values'])
+		# treeview.insert('','end',text= "碳", values=["C", "0.0", "0.12"],tags=[6])
 		tk.Button(tvframe, relief = 'raised', text = '性能',padx=0,pady=0,width=5,height=1,font=tfbutton,command=creat_mec_pro).grid(row=4,column=0,columnspan=2)
 		tk.Button(tvframe, relief = 'raised', text = '删除',padx=0,pady=0,width=5,height=1,font=tfbutton,command=delete_item).grid(row=4,column=2,columnspan=2)
 		tk.Button(tvframe, relief = 'raised', text = '提交',padx=0,pady=0,width=5,height=1,font=tfbutton,command=lambda:get_name(Alloycont,Alloyprop)).grid(row=4,column=4,columnspan=2)
@@ -327,7 +366,7 @@ def show(flag):
 	top.focus_set()
 	# print(top.grid_size())
 	shortcut=tk.StringVar()
-	top.bind("<Key>", lambda event:short_key(event,shortcut,func))
+	top.bind("<Key>", lambda event:short_key(event,shortcut,func,Alloycont,Alloyprop))
 	top.mainloop()
 
 root = tk.Tk()
@@ -343,5 +382,6 @@ rootframe = ttk.Frame(root, relief='groove', borderwidth=5, width=50, height=50)
 tk.Button(rootframe, relief = 'groove', text='创建新合金数据',width=20,height=2,font = ftroot,command=lambda:show(True)).pack(expand = tk.YES)
 tk.Button(rootframe, relief = 'groove', text='元素周期表',width=20,height=2,font = ftroot,command=lambda:show(False)).pack(expand = tk.YES)
 rootframe.pack(expand = tk.YES)
+root.protocol("WM_DELETE_WINDOW", root.quit())
 # root.bind("<Escape>",lambda event:root.destroy())
 root.mainloop()
