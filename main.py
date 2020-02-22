@@ -164,6 +164,53 @@ def creat_mec_pro():
 	Ten_Pro.bind("<Escape>",lambda event:Ten_Pro.destroy())
 	Ten_Pro.mainloop()
 
+# 新建性能
+def temp_mec_pro():
+	def checknumber(content):
+	    if content.replace('.','',1).isdecimal() or content=="":
+	        return True
+	    else:
+	        return False
+	Ten_Pro = tk.Toplevel()
+	decfont = tf.Font(family='等线', size=13,weight=tf.BOLD,underline=0,overstrike=0)
+	comCheckNum = Ten_Pro.register(checknumber)
+	Ten_Pro.title("拉伸性能")
+	center_window(Ten_Pro, 280, 98)
+	Ten_Pro.resizable(0,0)
+	centerframe = ttk.Frame(Ten_Pro, relief='groove', borderwidth=5, width=50, height=50)
+	tk.Label(centerframe, text='温度℃', relief='flat', width=8,height=1, font=decfont).grid(row=0,column=0,columnspan=2)
+	tk.Label(centerframe, text='棒拉伸MPa', relief='flat', width=8,height=1, font=decfont).grid(row=0,column=2,columnspan=2)
+	tk.Label(centerframe, text='延伸率%', relief='flat', width=8,height=1, font=decfont).grid(row=0,column=4,columnspan=2)
+	Temperature = tk.Entry(centerframe,width=8,bd=3,validate='key',validatecommand=(comCheckNum, '%P'),font=decfont)
+	Temperature.grid(row=1,column=0,columnspan=2)
+	Tension = tk.Entry(centerframe,width=8,bd=3,validate='key',validatecommand=(comCheckNum, '%P'),font=decfont)
+	Tension.grid(row=1,column=2,columnspan=2)
+	Elongation = tk.Entry(centerframe,width=8,bd=3,validate='key',validatecommand=(comCheckNum, '%P'),font=decfont)
+	Elongation.grid(row=1,column=4,columnspan=2)
+	def focus_rm(curr_ent):
+		curr_ent.focus_set()
+		curr_ent.select_range(0,len(curr_ent.get()))
+	def updatatreeview(ev=None):
+		Tem = Temperature.get()
+		Ten = Tension.get()
+		Elong = Elongation.get()
+		if Tem == '':
+			Tem = 20.0
+		if Ten != '' and Elong != '':
+			tarview.insert('','end',text='拉伸性能',tags='Tension_property',values=(float(Tem),float(Ten),float(Elong)))
+		Ten_Pro.destroy()
+	def quit_input():
+		Ten_Pro.destroy()
+	Temperature.focus_set()
+	Temperature.bind("<Return>", lambda event:focus_rm(Tension))
+	Tension.bind("<Return>", lambda event:focus_rm(Elongation))
+	Elongation.bind("<Return>", updatatreeview)
+	tk.Button(centerframe, text='确认', relief='raised', width=6,height=1,font=decfont,command=updatatreeview).grid(row=3,column=1,columnspan=2)
+	tk.Button(centerframe, text='取消', relief='raised', width=6,height=1,font=decfont,command=quit_input).grid(row=3,column=3,columnspan=2)
+	centerframe.pack()
+	Ten_Pro.bind("<Escape>",lambda event:Ten_Pro.destroy())
+	Ten_Pro.mainloop()
+
 def callbackClosetop(window):
 	global file
 	if file != None and messagebox.askyesno('提示', '需要保存文件吗？'):
@@ -188,16 +235,26 @@ def get_name(Alloycont,Alloyprop):
 		filename = Alloy_name.get()
 		if not os.path.exists('data'):
 			os.mkdir('data')
-		if not os.path.exists(filename+'.txt'):
+		if not os.path.exists(os.path.join('data',filename+'.txt')):
 			mode = 'w+'
+			# print("w")
 		else:
 			mode = 'r+'
+			# print("r")
 		# print("filepath:",os.path.abspath(filepath)==os.path.abspath(os.path.join('data',filename+'.txt')))
 		if filepath != None and os.path.abspath(filepath) != os.path.abspath(os.path.join('data',filename+'.txt')):
 			# print("come in")
 			shutil.copyfile(filepath,os.path.join('data',filename+'.txt'))
 		file = open(os.path.join('data',filename+'.txt'),mode,encoding="utf-8")
-		# print(file)
+		if treeview != None and tarview != None:
+			for line in file.readlines():
+				dic = json.loads(line)
+				# print(dic['text'],type(dic['text']))
+				if type(dic['tags'][0]) is int:
+					treeview.insert('','end',text=dic['text'],tags=dic['tags'],values=dic['values'])
+					# print(type(dic['tags'][0]),dic,dic['tags'][0]) 
+				if type(dic['tags'][0]) is str:
+					tarview.insert('','end',text=dic['text'],tags=dic['tags'],values=dic['values'])
 		Alloycont.set(filename+'合金成分')
 		Alloyprop.set(filename+'合金性能')
 		name_win.quit()
@@ -212,6 +269,7 @@ def get_name(Alloycont,Alloyprop):
 			nonlocal filepath
 			filepath = path
 	if file != None:
+		# print("duquwenjian")
 		dump2file()
 	filepath = None
 	ftinput_name = tf.Font(family='等线', size=15,weight=tf.BOLD,underline=0,overstrike=0)
@@ -260,7 +318,8 @@ def short_key(event,value,func,Alloycont,Alloyprop):
 				if ele_index < len(elements) and ele_index>=0:
 					func(elements[ele_index])
 				if ele_index < 0 and tarview != None:
-					creat_mec_pro()
+					# creat_mec_pro()
+					temp_mec_pro()
 			else:
 				get_name(Alloycont,Alloyprop)
 		elif event.char.isdecimal():
@@ -339,7 +398,7 @@ def show(flag):
 			if type(dic['tags'][0]) is str:
 				tarview.insert('','end',text=dic['text'],tags=dic['tags'],values=dic['values'])
 		# treeview.insert('','end',text= "碳", values=["C", "0.0", "0.12"],tags=[6])
-		tk.Button(tvframe, relief = 'raised', text = '性能',padx=0,pady=0,width=5,height=1,font=tfbutton,command=creat_mec_pro).grid(row=4,column=0,columnspan=2)
+		tk.Button(tvframe, relief = 'raised', text = '性能',padx=0,pady=0,width=5,height=1,font=tfbutton,command=temp_mec_pro).grid(row=4,column=0,columnspan=2)
 		tk.Button(tvframe, relief = 'raised', text = '删除',padx=0,pady=0,width=5,height=1,font=tfbutton,command=delete_item).grid(row=4,column=2,columnspan=2)
 		tk.Button(tvframe, relief = 'raised', text = '提交',padx=0,pady=0,width=5,height=1,font=tfbutton,command=lambda:get_name(Alloycont,Alloyprop)).grid(row=4,column=4,columnspan=2)
 		tvframe.grid(row=0,column=12,rowspan=3,columnspan=6)
