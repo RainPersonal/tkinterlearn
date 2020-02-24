@@ -3,7 +3,7 @@ import tkinter  as tk
 from tkinter import filedialog
 from tkinter import ttk
 import tkinter.messagebox as messagebox
-from elements import elements, get_class_by_index, ele_button
+from elements import elements, get_class_by_index, ele_button, get_index_by_symbol
 import tkinter.font as tf
 import json
 import os, sys, shutil
@@ -282,7 +282,7 @@ def get_name(Alloycont,Alloyprop):
 	Alloy = tk.Entry(name_frame,textvariable=Alloy_name)
 	Alloy.focus_set()
 	Alloy.grid(row=1,column=0,columnspan=2)
-	tk.Button(name_frame, text = '打开', font = ftinput_name, command = openfile).grid(row=2,column=0)
+	tk.Button(name_frame, text = '载入', font = ftinput_name, command = openfile).grid(row=2,column=0)
 	tk.Button(name_frame, text = '确认', font = ftinput_name, command = submit).grid(row=2,column=1)
 	name_frame.pack()
 	Alloy.bind("<Return>", submit)
@@ -311,21 +311,42 @@ def dump2file():
 
 def short_key(event,value,func,Alloycont,Alloyprop):
 		# print("test comein",value.get())
-		if event.keycode == 13:
-			if len(num:=value.get())>0:
-				ele_index = int(num)-1
+		if event.keycode == 13:  #回车键判断，进行弹窗
+			if len(string:=value.get().upper())>0:
+				elenamestr = ''
+				num = ''
+				for i in string: # 建立循环取出数字和字母
+					if i.isalpha():
+						elenamestr += i
+					if i.isdigit():
+						num  += i
 				value.set('')
-				if ele_index < len(elements) and ele_index>=0:
-					func(elements[ele_index])
-				if ele_index < 0 and tarview != None:
+				if len(num) >0:
+					ele_index = int(num)-1
+					if ele_index < len(elements) and ele_index>=0: # 通过数字打开输入框
+						func(elements[ele_index])
+						return
+				if elenamestr in get_index_by_symbol.keys():  # 通过字母打开输入框
+					func(elements[get_index_by_symbol[elenamestr]-1])
+					return
+				elif len(elenamestr)>0:
+					return
+				if ele_index < 0 and tarview != None: # 若为0则输入性能
 					# creat_mec_pro()
 					temp_mec_pro()
+					return
 			else:
 				get_name(Alloycont,Alloyprop)
+				return
 		elif event.char.isdecimal():
 			value.set(value.get()+event.char)
-		elif event.keycode == 27:
+			return
+		elif 64 < event.keycode < 91:
+			value.set(value.get()+event.char)
+			return
+		elif event.keycode == 27 or event.keycode == 8:
 			value.set('')
+			return
 
 def show(flag):
 	fttop = tf.Font(family='等线', size=15,weight=tf.BOLD,underline=0,overstrike=0)
